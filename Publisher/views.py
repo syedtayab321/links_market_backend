@@ -1,7 +1,7 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
-from link_market_backend.Publisher import models as PublisherModels
-from link_market_backend.Publisher import serializer as PublisherSerializer
+from Publisher import models as PublisherModels
+from Publisher import serializer as PublisherSerializer
 import os
 from django.conf import settings
 from rest_framework import status

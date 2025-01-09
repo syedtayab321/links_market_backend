@@ -1,5 +1,5 @@
 from django.urls import path
-from link_market_backend.Publisher import  views
+from Publisher import views
 
 urlpatterns = [
     path('publisherSignUp/', views.PublisherSignUp, name='publishers-singUp'),

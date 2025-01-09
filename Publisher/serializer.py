@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from link_market_backend.Publisher import models as publisherModels
+from Publisher import models as publisherModels
 from .utils import send_verification_email
 
 

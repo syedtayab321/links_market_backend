@@ -1,75 +1,104 @@
-from rest_framework.decorators import api_view
+from rest_framework import generics, status
 from rest_framework.response import Response
-from link_market_backend.Buyer import models as buyerModels
-from link_market_backend.Buyer import serializer as buyerSerailizer
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from .models import BuyerSignUp, TaskCreation, Order, Escrow
+from .serializer import (
+    BuyerSignUpSerializer,
+    TaskSerializer,
+    OrderSerializer,
+    BuyerProfileSerializer,
+    EscrowSerializer,
+    PerformanceAnalyticsSerializer
+)
+
+# Buyer SignUp View
+class BuyerSignUpView(generics.CreateAPIView):
+    queryset = BuyerSignUp.objects.all()
+    serializer_class = BuyerSignUpSerializer
 
 
-@api_view(['GET', 'POST', 'PUT', 'DELETE'])
-def BuyersSignUp(request):
-    if request.method == 'GET':
-        try:
-            buyers = buyerModels.BuyerSignUp.objects.all()
-            serializer = buyerSerailizer.BuyerSignUpSerializer(buyers, many=True)
-            return Response(serializer.data)
-        except Exception as e:
-            return Response({'error': 'No data found', 'details': str(e)}, status=404)
+# Buyer Profile View
+class BuyerProfileView(APIView):
+    permission_classes = [IsAuthenticated]
 
-    elif request.method == 'POST':
-        serializer = buyerSerailizer.BuyerSignUpSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'message': 'Buyer created successfully', 'data': serializer.data})
-        return Response({'error': 'Invalid data', 'details': serializer.errors}, status=400)
-
-    elif request.method == 'PUT':
-        try:
-            buyer_id = request.data.get('id')
-            buyer = buyerModels.BuyerSignUp.objects.get(id=buyer_id)
-            serializer = buyerSerailizer.BuyerSignUpSerializer(buyer, data=request.data, partial=True)
-            if serializer.is_valid():
-                serializer.save()
-                return Response({'message': 'Buyer updated successfully', 'data': serializer.data})
-            return Response({'error': 'Invalid data', 'details': serializer.errors}, status=400)
-        except buyerModels.BuyerSignUp.DoesNotExist:
-            return Response({'error': 'Buyer not found'}, status=404)
-        except Exception as e:
-            return Response({'error': 'An error occurred', 'details': str(e)}, status=500)
-
-    elif request.method == 'DELETE':
-        try:
-            buyer_id = request.GET.get('id')
-            if not buyer_id:
-                return Response({'error': 'ID parameter is required'}, status=400)
-            buyerModels.BuyerSignUp.objects.filter(id=buyer_id).delete()
-            return Response({'message': 'Buyer deleted successfully'})
-        except Exception as e:
-            return Response({'error': 'An error occurred', 'details': str(e)}, status=500)
-
-
-@api_view(['GET', 'POST', 'PUT', 'DELETE'])
-def TasksData(request):
-    if request.method == 'GET':
-        tasks = buyerModels.BuyeTask.objects.filter(buyer_id=request.GET.get('buyer_id'))
-        serializer = buyerSerailizer.TaskSerializer(tasks, many=True)
+    def get(self, request):
+        buyer = request.user
+        serializer = BuyerProfileSerializer(buyer)
         return Response(serializer.data)
 
-    elif request.method == 'POST':
-        serializer = buyerSerailizer.TaskSerializer(data=request.data)
+    def put(self, request):
+        buyer = request.user
+        serializer = BuyerProfileSerializer(buyer, data=request.data, partial=True)
         if serializer.is_valid():
             serializer.save()
-            return Response({'message': 'Task created successfully', 'data': serializer.data})
-        return Response({'error': 'Invalid data', 'details': serializer.errors}, status=400)
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    elif request.method == 'PUT':
-        task_id = request.data.get('id')
-        task = buyerModels.TaskCreation.objects.get(id=task_id)
-        serializer = buyerSerailizer.TaskSerializer(task, data=request.data, partial=True)
-        if serializer.is_valid():
-            serializer.save()
-            return Response({'message': 'Task updated successfully', 'data': serializer.data})
-        return Response({'error': 'Invalid data', 'details': serializer.errors}, status=400)
 
-    elif request.method == 'DELETE':
-        task_id = request.GET.get('id')
-        buyerModels.TaskCreation.objects.filter(id=task_id).delete()
-        return Response({'message': 'Task deleted successfully'})
+# Task Creation View
+class TaskCreateView(generics.CreateAPIView):
+    queryset = TaskCreation.objects.all()
+    serializer_class = TaskSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(buyer=self.request.user)
+
+
+# Task List View
+class TaskListView(generics.ListAPIView):
+    serializer_class = TaskSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return TaskCreation.objects.filter(buyer=self.request.user)
+
+
+# Order Creation View
+class OrderCreateView(generics.CreateAPIView):
+    queryset = Order.objects.all()
+    serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(buyer=self.request.user)
+
+
+# Order List View
+class OrderListView(generics.ListAPIView):
+    serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Order.objects.filter(buyer=self.request.user)
+
+
+# Escrow Creation View
+class EscrowCreateView(generics.CreateAPIView):
+    queryset = Escrow.objects.all()
+    serializer_class = EscrowSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_create(self, serializer):
+        serializer.save(buyer=self.request.user)
+
+
+# Escrow List View
+class EscrowListView(generics.ListAPIView):
+    serializer_class = EscrowSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Escrow.objects.filter(buyer=self.request.user)
+
+
+# Performance Analytics View
+class PerformanceAnalyticsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        buyer = request.user
+        analytics, created = PerformanceAnalytics.objects.get_or_create(buyer=buyer)
+        serializer = PerformanceAnalyticsSerializer(analytics)
+        return Response(serializer.data)
